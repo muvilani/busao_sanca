@@ -155,9 +155,11 @@ Os testes cobrem as regras de acesso HTTP e as validações do coletor. Eles ver
 - [coletar_linhas.py](coletar_linhas.py): descoberta do catálogo, validação, extração e exportação.
 - [acesso_http.py](acesso_http.py): regras de acesso, espera entre requisições e tratamento de falhas HTTP.
 - [processar_horarios.py](processar_horarios.py): parser puro e normalização das respostas de horários, sem acesso HTTP.
+- [processar_itinerarios.py](processar_itinerarios.py): parser puro de itinerários, paradas e geometria, associado ao `tripId` dos horários.
 - [tests/](tests/): testes automatizados com respostas simuladas.
 - [docs/fonte-sou.md](docs/fonte-sou.md): evidências da investigação e decisões técnicas.
 - [docs/esquema-horarios.md](docs/esquema-horarios.md): esquema normalizado, invariantes e limitações do parser de horários.
+- [docs/esquema-itinerarios.md](docs/esquema-itinerarios.md): contrato normalizado, validação espacial e limitações dos itinerários.
 - [inspecionar_oficial.py](inspecionar_oficial.py): utilitário de inspeção já existente no projeto; a execução documentada nesta etapa usa o coletor.
 
 ## Inspeção opcional com navegador
