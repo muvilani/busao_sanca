@@ -33,6 +33,12 @@ semana, pois a ordem do vetor semanal e a semântica das exceções ainda não
 foram estabelecidas. Partidas são exibidas explicitamente como horários na
 origem da viagem, nunca como previsão em uma parada intermediária.
 
+O módulo [`planejar_viagem.py`](planejar_viagem.py) oferece análise experimental
+conservadora de origem e destino: calcula distância em linha reta, exige que o
+embarque preceda o desembarque e nunca converte partida de terminal em horário
+de passagem. O estudo da primeira viagem está documentado em
+[`docs/planejamento-experimental.md`](docs/planejamento-experimental.md).
+
 O pipeline só classifica como completa a cobertura do escopo solicitado quando
 todas as variantes foram obtidas. Geometrias cujas extremidades divergem das
 paradas podem ser preservadas para diagnóstico, ficam enumeradas em

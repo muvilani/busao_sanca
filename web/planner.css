@@ -1,0 +1,7 @@
+.planejador { border: 2px solid #163a2d; }
+.planejador h2, .planejador h3 { margin-top: 0; }
+.rota-exp { border-top: 1px solid #d7d8ce; padding-top: 12px; margin-top: 12px; }
+.selo { display: inline-block; border-radius: 999px; padding: 4px 8px; background: #ffe5bd; color: #743c09; font-size: .76rem; font-weight: 800; text-transform: uppercase; }
+.passos { display: grid; grid-template-columns: 28px 1fr; gap: 8px; margin: 12px 0; }
+.passos b { background: #c9f36a; color: #163a2d; width: 25px; height: 25px; border-radius: 50%; display: grid; place-items: center; }
+.atribuicao { font-size: .76rem; color: #65706b; }

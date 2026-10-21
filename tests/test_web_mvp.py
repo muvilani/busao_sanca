@@ -29,6 +29,14 @@ class WebMvpTests(unittest.TestCase):
         ignore = (WEB.parent / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("web/dados.json", ignore)
 
+    def test_planejador_experimental_expoe_limitacoes(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="planejador"', html)
+        self.assertIn("candidata não verificada", js)
+        self.assertIn("Não há horário confirmado de passagem", js)
+        self.assertIn("linha reta", js)
+
 
 if __name__ == "__main__":
     unittest.main()
