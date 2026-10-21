@@ -57,7 +57,11 @@ campos_extras_timetable
 - Horários aceitam `HH:MM` ou `HH:MM:SS`, inclusive de `24:00` a `47:59:59`
   para representações operacionais após meia-noite. O parser não calcula
   duração e, portanto, não confunde `23:50–00:20` com duração negativa.
-- Exceções devem referenciar um `serviceId` presente. `type` é preservado
+- Exceções preservam `serviceId`, inclusive quando o serviço não aparece nas
+  direções da mesma resposta (caso observado na fonte). O campo booleano
+  `referencia_servico_presente` registra essa condição sem inferir o efeito da
+  exceção. `type` é um inteiro assinado (inclusive valores negativos foram
+  observados) e é preservado
   como valor de origem sem interpretação.
 
 ## Preservação da origem

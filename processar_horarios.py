@@ -50,6 +50,13 @@ def _inteiro(valor: object, caminho: str, *, positivo: bool = False) -> int:
     return valor
 
 
+def _inteiro_assinado(valor: object, caminho: str) -> int:
+    """Valida um inteiro opaco sem inventar limites para sua semântica."""
+    if type(valor) is not int:
+        _erro(caminho, "esperado inteiro")
+    return valor
+
+
 def _texto(valor: object, caminho: str, *, vazio: bool = False) -> str:
     if not isinstance(valor, str) or (not vazio and not valor.strip()):
         regra = "texto" if vazio else "texto não vazio"
@@ -296,14 +303,17 @@ def processar_horarios(payload: object) -> dict:
             f"{caminho}.serviceId",
             positivo=True,
         )
-        if service_id not in servicos_existentes:
-            _erro(f"{caminho}.serviceId", "serviço inexistente")
-        tipo = _inteiro(_obrigatorio(origem, "type", caminho), f"{caminho}.type")
+        # A fonte usa também valores negativos (observado: -1). Como a
+        # semântica ainda não foi confirmada, validamos somente o tipo.
+        tipo = _inteiro_assinado(
+            _obrigatorio(origem, "type", caminho), f"{caminho}.type"
+        )
         conhecidos = {"date", "serviceId", "type"}
         excecoes.append(
             {
                 "data": _data(_obrigatorio(origem, "date", caminho), f"{caminho}.date"),
                 "id_servico": service_id,
+                "referencia_servico_presente": service_id in servicos_existentes,
                 "tipo_origem": tipo,
                 "semantica_tipo_confirmada": False,
                 "campos_extras": _extras(origem, conhecidos),

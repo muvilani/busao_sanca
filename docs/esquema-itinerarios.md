@@ -17,6 +17,12 @@ O `trip_id` é o mesmo `id_viagem` produzido por
 [`processar_horarios.py`](../processar_horarios.py). Essa identidade, e não o
 nome do destino, liga horário e itinerário.
 
+Por padrão, extremidades da geometria distantes das paradas terminais são
+rejeitadas. O pipeline controlado pode preservá-las para diagnóstico com
+`permitir_extremidades_divergentes=True`; nesse caso,
+`geometria.validacao.extremidades_compativeis` fica `false` e a interface não
+deve tratar a geometria como confirmada.
+
 ## Entrada observada
 
 ```text

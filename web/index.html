@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#163a2d">
+  <title>Busão Sanca</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <p class="marca">BUSÃO SANCA <span>prévia privada</span></p>
+    <h1>Seu ônibus, sem adivinhação.</h1>
+    <p>Consulte o que foi validado na fonte e veja claramente o que ainda é incerto.</p>
+  </header>
+  <main>
+    <section id="estado" class="painel estado" aria-live="polite">Carregando dados locais…</section>
+    <section class="painel controles">
+      <label for="busca">Linha, nome ou destino</label>
+      <input id="busca" type="search" placeholder="Ex.: 34, Morumbi, Douradinho" autocomplete="off">
+      <label for="data">Data consultada</label>
+      <input id="data" type="date">
+      <p class="nota">A data filtra apenas a vigência declarada. O dia da semana não é confirmado porque a ordem do vetor semanal da fonte ainda não foi validada.</p>
+    </section>
+    <section id="caso" class="painel caso" hidden></section>
+    <section id="lista" aria-label="Linhas"></section>
+  </main>
+  <footer>Projeto independente · confira avisos antes de viajar</footer>
+  <script src="app.js" defer></script>
+</body>
+</html>

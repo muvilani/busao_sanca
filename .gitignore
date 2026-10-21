@@ -37,3 +37,8 @@ saida/
 # Relações obtidas de fontes externas, mantidas somente para conferência local
 # enquanto a permissão de redistribuição não estiver esclarecida.
 dados/*.csv
+
+# Dataset normalizado servido localmente pelo MVP. Ele pode conter dados de
+# terceiros e deve permanecer fora do Git enquanto a redistribuicao nao estiver
+# esclarecida. O arquivo de demonstracao sintetico continua versionado.
+web/dados.json

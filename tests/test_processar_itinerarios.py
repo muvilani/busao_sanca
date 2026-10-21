@@ -185,6 +185,16 @@ class GeometriaInvalidaTests(unittest.TestCase):
         with self.assertRaisesRegex(ErroItinerario, "extremidades"):
             processar_itinerario(entrada, 7001)
 
+    def test_divergencia_pode_ser_preservada_e_marcada_para_diagnostico(self):
+        entrada = resposta()
+        entrada["stops"][-1]["lat"] = 0
+        resultado = processar_itinerario(
+            entrada, 7001, permitir_extremidades_divergentes=True
+        )
+        self.assertFalse(
+            resultado["geometria"]["validacao"]["extremidades_compativeis"]
+        )
+
 
 class EsquemaInvalidoTests(unittest.TestCase):
     def test_resposta_deve_ser_objeto(self):

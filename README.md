@@ -3,9 +3,40 @@
 Projeto em desenvolvimento para facilitar a consulta de linhas, horários e
 itinerários dos ônibus de São Carlos (SP).
 
-> **Estado atual:** este repositório contém somente a primeira etapa do projeto:
-> um coletor do catálogo de linhas. A interface web, os horários, os itinerários
-> e os recursos de PWA ainda não foram implementados.
+> **Estado atual:** além do catálogo, o projeto possui parsers de horários e
+> itinerários e um MVP web mobile-first. O MVP é uma prévia privada, não é um
+> planejador de viagens e ainda não é uma PWA instalável.
+
+## MVP privado: horários e itinerários
+
+O [`pipeline_mvp.py`](pipeline_mvp.py) usa o catálogo local mais recente,
+consulta uma lista pequena de linhas e valida horários, variantes e itinerários
+com os parsers existentes. O padrão coleta somente a linha `34`. Respostas
+brutas não são gravadas e o dataset normalizado fica em `saida/mvp/` e
+`web/dados.json`; ambos permanecem fora do Git.
+
+```powershell
+$env:UV_CACHE_DIR = ".uv-cache"
+uv run --locked python pipeline_mvp.py --linhas 34 --intervalo 2
+uv run --locked python -m http.server 8000 --directory web --bind 127.0.0.1
+```
+
+Abra `http://127.0.0.1:8000`. O servidor fica restrito ao próprio computador.
+Não exponha o servidor de desenvolvimento diretamente na internet. Para abrir
+no Android fora da rede local, use somente uma implantação privada autenticada;
+o arquivo `web/dados.json` não deve ser commitado nem publicado abertamente.
+
+A interface permite buscar por número, nome e destino, selecionar uma data,
+consultar sentidos, variantes, partidas e paradas. A data limita apenas o
+intervalo de vigência declarado pelo serviço. Ela **não** confirma o dia da
+semana, pois a ordem do vetor semanal e a semântica das exceções ainda não
+foram estabelecidas. Partidas são exibidas explicitamente como horários na
+origem da viagem, nunca como previsão em uma parada intermediária.
+
+O pipeline só classifica como completa a cobertura do escopo solicitado quando
+todas as variantes foram obtidas. Geometrias cujas extremidades divergem das
+paradas podem ser preservadas para diagnóstico, ficam enumeradas em
+`cobertura.geometrias_com_extremidades_divergentes` e recebem aviso na tela.
 
 ## Etapa 1: coletar o catálogo de linhas
 

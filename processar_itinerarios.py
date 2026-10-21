@@ -124,7 +124,9 @@ def _distancia_metros(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 2 * 6_371_000 * math.asin(min(1.0, math.sqrt(haversine)))
 
 
-def _validar_geometria(shape: object, paradas: list[dict]) -> dict:
+def _validar_geometria(
+    shape: object, paradas: list[dict], *, permitir_extremidades_divergentes: bool
+) -> dict:
     texto = _texto(shape, "$.shape")
     coordenadas = _decodificar_polyline(texto)
     primeira_shape = (coordenadas[0][1], coordenadas[0][0])
@@ -135,7 +137,10 @@ def _validar_geometria(shape: object, paradas: list[dict]) -> dict:
         _distancia_metros(primeira_shape, primeira_parada),
         _distancia_metros(ultima_shape, ultima_parada),
     ]
-    if any(distancia > TOLERANCIA_EXTREMIDADE_METROS for distancia in distancias):
+    compativeis = all(
+        distancia <= TOLERANCIA_EXTREMIDADE_METROS for distancia in distancias
+    )
+    if not compativeis and not permitir_extremidades_divergentes:
         _erro(
             "$.shape",
             "extremidades da geometria não correspondem às paradas terminais",
@@ -148,11 +153,17 @@ def _validar_geometria(shape: object, paradas: list[dict]) -> dict:
             "tolerancia_extremidade_metros": TOLERANCIA_EXTREMIDADE_METROS,
             "distancia_inicio_metros": distancias[0],
             "distancia_fim_metros": distancias[1],
+            "extremidades_compativeis": compativeis,
         },
     }
 
 
-def processar_itinerario(payload: object, trip_id: object) -> dict:
+def processar_itinerario(
+    payload: object,
+    trip_id: object,
+    *,
+    permitir_extremidades_divergentes: bool = False,
+) -> dict:
     """Valida ``trip-details`` e normaliza o itinerário associado a ``trip_id``."""
     identificador = _inteiro_positivo(trip_id, "trip_id")
     raiz = _objeto(payload, "$")
@@ -191,7 +202,11 @@ def processar_itinerario(payload: object, trip_id: object) -> dict:
             }
         )
 
-    geometria = _validar_geometria(_obrigatorio(raiz, "shape", "$"), paradas)
+    geometria = _validar_geometria(
+        _obrigatorio(raiz, "shape", "$"),
+        paradas,
+        permitir_extremidades_divergentes=permitir_extremidades_divergentes,
+    )
     campos_origem = _campos(raiz, {"price"})
     conhecidos = {"tripName", "routeName", "shape", "tzOffset", "stops", "price"}
     return {

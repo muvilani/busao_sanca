@@ -130,6 +130,12 @@ class ProcessamentoValidoTests(unittest.TestCase):
         self.assertEqual(excecao["tipo_origem"], 7)
         self.assertFalse(excecao["semantica_tipo_confirmada"])
 
+    def test_excecao_preserva_tipo_negativo_sem_interpretar(self):
+        resultado = processar_horarios(
+            resposta(excecoes=[{"date": "2026-05-01", "serviceId": 501, "type": -1}])
+        )
+        self.assertEqual(resultado["excecoes_calendario"][0]["tipo_origem"], -1)
+
     def test_campos_desconhecidos_e_estados_null_false_ausente_sao_preservados(self):
         entrada = resposta()
         entrada["campoNovo"] = {"valor": 4}
@@ -187,10 +193,12 @@ class ReferenciasInvalidasTests(unittest.TestCase):
         with self.assertRaisesRegex(ErroHorario, "direção inexistente"):
             processar_horarios(entrada)
 
-    def test_excecao_referencia_servico_inexistente(self):
+    def test_excecao_preserva_referencia_a_servico_nao_listado(self):
         entrada = resposta(excecoes=[{"date": "2026-05-01", "serviceId": 999, "type": 1}])
-        with self.assertRaisesRegex(ErroHorario, "serviço inexistente"):
-            processar_horarios(entrada)
+        resultado = processar_horarios(entrada)
+        excecao = resultado["excecoes_calendario"][0]
+        self.assertEqual(excecao["id_servico"], 999)
+        self.assertFalse(excecao["referencia_servico_presente"])
 
 
 class CalendarioInvalidoTests(unittest.TestCase):
