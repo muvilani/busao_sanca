@@ -24,10 +24,36 @@
       <p class="nota">A data filtra apenas a vigência declarada. O dia da semana não é confirmado porque a ordem do vetor semanal da fonte ainda não foi validada.</p>
     </section>
     <section id="caso" class="painel caso" hidden></section>
-    <section id="planejador" class="painel planejador" hidden aria-live="polite"></section>
+    <section id="paradas" class="painel paradas-painel" aria-labelledby="titulo-paradas">
+      <h2 id="titulo-paradas">Encontrar uma parada</h2>
+      <p>Use sua localização, se desejar, ou pesquise uma parada cadastrada. A distância exibida é em linha reta, não necessariamente o caminho a pé.</p>
+      <button id="usar-localizacao" type="button">Encontrar paradas próximas</button>
+      <p id="localizacao-status" class="meta" aria-live="polite">A localização só será usada após sua autorização e não será armazenada.</p>
+      <label for="busca-parada">Buscar parada manualmente</label>
+      <input id="busca-parada" type="search" list="sugestoes-parada" placeholder="Ex.: Terminal ou Rua XV" autocomplete="off">
+      <datalist id="sugestoes-parada"></datalist>
+      <div id="paradas-proximas" class="lista-paradas" aria-live="polite"></div>
+      <div id="consulta-parada" class="consulta-parada" aria-live="polite"></div>
+    </section>
+    <section id="planejador" class="painel planejador" aria-labelledby="titulo-planejador">
+      <h2 id="titulo-planejador">Planejar viagem</h2>
+      <p>Informe uma parada ou referência de origem e destino. As sugestões vêm somente das paradas validadas no dataset local.</p>
+      <div class="rota-form">
+        <label for="origem-rota">Origem</label>
+        <input id="origem-rota" type="search" list="sugestoes-origem" placeholder="Ex.: São João" autocomplete="off">
+        <datalist id="sugestoes-origem"></datalist>
+        <label for="destino-rota">Destino</label>
+        <input id="destino-rota" type="search" list="sugestoes-destino" placeholder="Ex.: Centro" autocomplete="off">
+        <datalist id="sugestoes-destino"></datalist>
+        <button id="buscar-rota" type="button">Encontrar ônibus</button>
+      </div>
+      <div id="resultados-rota" aria-live="polite"></div>
+    </section>
     <section id="lista" aria-label="Linhas"></section>
   </main>
   <footer>Projeto independente · confira avisos antes de viajar</footer>
+  <script src="planejador.js" defer></script>
+  <script src="paradas.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

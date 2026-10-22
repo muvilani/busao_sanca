@@ -30,6 +30,16 @@ class ErroPipeline(RuntimeError):
     """Coleta do conjunto solicitado não pôde ser concluída integralmente."""
 
 
+class ErroLinha(ErroPipeline):
+    """Falha de uma linha, preservando a viagem quando conhecida."""
+
+    def __init__(self, codigo: str, mensagem: str, trip_id: int | None = None):
+        self.codigo = codigo
+        self.trip_id = trip_id
+        self.mensagem = mensagem
+        super().__init__(mensagem)
+
+
 def agora() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -97,7 +107,9 @@ def coletar_linha(cliente, projeto_id: int, linha: dict) -> dict:
                 permitir_extremidades_divergentes=True,
             )
         except ValueError as erro:
-            raise ErroPipeline(f"trip-details {trip_id}: {erro}") from erro
+            raise ErroLinha(
+                linha["codigo"], f"trip-details {trip_id}: {erro}", trip_id=trip_id
+            ) from erro
         itinerarios.append(item)
         urls_itinerarios.append(url_itinerario)
 

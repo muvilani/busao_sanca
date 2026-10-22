@@ -170,6 +170,61 @@ O diretório `saida/` e os CSVs externos em `dados/` são ignorados pelo Git.
 Isso preserva localmente as evidências e referências anteriores sem publicar
 dados de terceiros antes da confirmação das condições de redistribuição.
 
+## Coleta incremental e consolidação
+
+O módulo [coletar_lotes.py](coletar_lotes.py) examina os datasets locais antes de acessar a API. Linhas com cobertura completa e todos os itinerários válidos são reutilizadas; linhas com falha e linhas ainda não coletadas ficam classificadas separadamente. Por padrão, somente linhas ainda não coletadas são solicitadas:
+
+```powershell
+uv run --locked python coletar_lotes.py --entrada saida --saida saida/lotes --intervalo 2
+```
+
+Para retomar ou tentar novamente linhas específicas, informe seus códigos. Uma linha já validada continuará sendo ignorada:
+
+```powershell
+uv run --locked python coletar_lotes.py --linhas 52 53 54 55 58 --entrada saida --saida saida/lotes --intervalo 2
+```
+
+Cada execução grava um manifesto e um arquivo por linha em `saida/lotes/`. Falhas incluem o código, o `trip_id` quando conhecido e a mensagem de validação. O módulo não escreve em [web/dados.json](web/dados.json).
+
+Para consolidar somente linhas revalidadas:
+
+```powershell
+uv run --locked python consolidar_datasets.py --entrada saida --saida saida/consolidado/dados.json
+```
+
+O resultado informa `validadas`, `com_falhas` e `nao_coletadas`. Use `--exigir-completa` apenas quando todas as linhas do catálogo estiverem validadas; uma linha com itinerário inválido nunca entra como completa.
+
+Para usar o consolidado no MVP local, copie-o explicitamente para o arquivo
+ignorado pelo Git:
+
+```powershell
+Copy-Item saida/consolidado/dados.json web/dados.json -Force
+```
+
+O frontend aceita conjuntos parciais, informa as linhas indisponíveis e mantém
+os avisos de que os horários são de saída na origem, não previsão de chegada.
+
+## Planejador de viagens por texto
+
+O MVP também permite informar origem e destino por texto. A busca ignora
+acentos e diferenças de maiúsculas, oferece sugestões de paradas do dataset e
+respeita o sentido e a ordem das paradas. Primeiro são exibidas rotas diretas;
+conexões só aparecem quando existe uma parada compartilhada de forma exata
+entre duas linhas e ambas as pernas têm ordem válida.
+
+Para testar localmente:
+
+```powershell
+uv run --locked python -m http.server 8000 --directory web --bind 127.0.0.1
+```
+
+Abra `http://127.0.0.1:8000`, informe uma origem e um destino e selecione uma
+sugestão. Os horários exibidos são partidas oficiais na origem da viagem, não
+previsões de chegada nos pontos. A linha 54 não participa do planejador porque
+continua sem itinerário validado.
+
+Para investigar `8477734`, faça uma coleta explícita das linhas 52, 53, 54, 55 e 58, localize no manifesto a entrada com esse `trip_id` e compare o `timetable` da linha com o `trip-details` bruto. Enquanto `stops` não for um array com pelo menos duas paradas, a falha deve permanecer registrada e a linha não deve entrar no consolidado. Essa investigação requer confirmação antes das requisições reais.
+
 ## Testes básicos
 
 Os testes usam respostas simuladas e não precisam consultar o site. Com as dependências instaladas, execute:
@@ -213,3 +268,20 @@ uv run playwright install chromium
 
 O download do navegador é separado e não é necessário para executar o
 coletor ou seus testes.
+## Consulta de paradas próximas
+
+O MVP agora monta, no navegador, um índice local das paradas presentes no dataset validado. Para testar:
+
+```powershell
+uv run python -m http.server 8000 --directory web
+```
+
+Abra `http://localhost:8000`, autorize a localização quando desejar e use **Encontrar paradas próximas**. A distância é em linha reta e a localização não é armazenada nem enviada. Se a permissão for negada, pesquise pelo nome da parada no campo manual.
+
+Ao selecionar uma parada, a tela mostra as linhas, sentidos, variantes, posição no itinerário e partidas oficiais associadas à viagem. Essas partidas continuam identificadas como saídas na origem da viagem; não são horários de passagem na parada selecionada.
+
+Para auditar o índice sem abrir o navegador:
+
+```powershell
+uv run python -c "import json; from paradas import construir_indice_paradas, resumo_indice; d=json.load(open('saida/consolidado/dados.json', encoding='utf-8')); print(resumo_indice(construir_indice_paradas(d)))"
+```

@@ -37,6 +37,51 @@ class WebMvpTests(unittest.TestCase):
         self.assertIn("Não há horário confirmado de passagem", js)
         self.assertIn("linha reta", js)
 
+    def test_interface_aceita_dataset_parcial_e_sinaliza_falhas(self):
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        self.assertIn("Dados locais parciais; linhas indisponíveis não são exibidas", js)
+        self.assertIn("dataset.classificacao?.com_falhas", js)
+        self.assertIn("Array.isArray(dataset.linhas)", js)
+
+    def test_interface_usa_data_do_consolidado_sem_invalid_date(self):
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        self.assertIn("dataset.coletado_em || dataset.consolidado_em", js)
+        self.assertIn("data não informada", js)
+        self.assertNotIn("new Date(dataset.coletado_em).toLocaleString", js)
+
+    def test_interface_expoe_planejador_textual(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        planner = (WEB / "planejador.js").read_text(encoding="utf-8")
+        self.assertIn('id="origem-rota"', html)
+        self.assertIn('id="destino-rota"', html)
+        self.assertIn('id="buscar-rota"', html)
+        self.assertIn("window.BusaoPlanner", planner)
+        self.assertIn("horario_passagem_confirmado: false", planner)
+        self.assertIn('catalogo.codigo === "54"', planner)
+
+    def test_interface_exibe_primeira_parada_e_mapa(self):
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        css = (WEB / "planner.css").read_text(encoding="utf-8")
+        self.assertIn("Primeira parada cadastrada", js)
+        self.assertIn("O ponto oficial de partida não foi confirmado", js)
+        self.assertIn("openstreetmap.org", js)
+        self.assertIn("origem-viagem", css)
+
+    def test_interface_expoe_consulta_de_paradas_e_geolocalizacao(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn('id="usar-localizacao"', html)
+        self.assertIn('id="busca-parada"', html)
+        self.assertIn("navigator.geolocation", js)
+        self.assertIn("Permissão negada", js)
+        self.assertIn("linha reta", html)
+        self.assertIn("window.BusaoStops", js)
+
+    def test_consulta_preserva_distincao_de_partida_e_passagem(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn("saídas na origem da viagem", js)
+        self.assertIn("não horários de passagem nesta parada", js)
+
 
 if __name__ == "__main__":
     unittest.main()

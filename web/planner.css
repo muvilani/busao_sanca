@@ -1,7 +1,29 @@
 .planejador { border: 2px solid #163a2d; }
 .planejador h2, .planejador h3 { margin-top: 0; }
+.rota-form { display: grid; gap: 8px; }
+.rota-form label { font-weight: 750; margin-top: 3px; }
+.rota-form input { width: 100%; min-height: 48px; border: 1px solid #aeb6b1; border-radius: 12px; padding: 10px 12px; font: inherit; background: white; }
+.rota-form button { min-height: 48px; border: 0; border-radius: 12px; padding: 10px 14px; background: #163a2d; color: white; font: inherit; font-weight: 800; cursor: pointer; }
+.resultado-rota { border-top: 1px solid #d7d8ce; padding-top: 12px; margin-top: 12px; }
+.resultado-rota h3 { margin-bottom: 4px; }
+.resultado-rota .selo { margin-bottom: 8px; }
+.rota-conexao { border-left: 4px solid #c9f36a; padding-left: 10px; }
+.origem-viagem { flex-basis: 100%; width: 100%; margin: 0 0 4px; padding: 10px; background: #eaf5d3; border-radius: 10px; color: #163a2d; }
+.origem-viagem a { color: #163a2d; font-weight: 750; }
+@media(min-width:640px){.rota-form{grid-template-columns:1fr 1fr auto;align-items:end}.rota-form label:nth-of-type(2){grid-column:2;grid-row:1}.rota-form input:nth-of-type(1){grid-column:1;grid-row:2}.rota-form input:nth-of-type(2){grid-column:2;grid-row:2}.rota-form button{grid-column:3;grid-row:2}}
 .rota-exp { border-top: 1px solid #d7d8ce; padding-top: 12px; margin-top: 12px; }
 .selo { display: inline-block; border-radius: 999px; padding: 4px 8px; background: #ffe5bd; color: #743c09; font-size: .76rem; font-weight: 800; text-transform: uppercase; }
 .passos { display: grid; grid-template-columns: 28px 1fr; gap: 8px; margin: 12px 0; }
 .passos b { background: #c9f36a; color: #163a2d; width: 25px; height: 25px; border-radius: 50%; display: grid; place-items: center; }
 .atribuicao { font-size: .76rem; color: #65706b; }
+.paradas-painel { border: 2px solid #d5e8b3; }
+.paradas-painel h2 { margin-top: 0; }
+.paradas-painel > button { min-height: 48px; border: 0; border-radius: 12px; padding: 10px 14px; background: #163a2d; color: white; font: inherit; font-weight: 800; cursor: pointer; }
+.paradas-painel > input { width: 100%; min-height: 48px; border: 1px solid #aeb6b1; border-radius: 12px; padding: 10px 12px; font: inherit; background: white; margin-top: 5px; }
+.lista-paradas { display: grid; gap: 8px; margin-top: 12px; }
+.parada-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; padding: 12px; border: 1px solid #cbd6c4; border-radius: 12px; background: #f8fbf3; color: #163a2d; text-align: left; font: inherit; cursor: pointer; }
+.parada-card span { color: #65706b; font-size: .88rem; }
+.consulta-parada { margin-top: 14px; }
+.consulta-parada h3 { margin-bottom: 4px; }
+.atendimento-parada { border-top: 1px solid #d7d8ce; padding-top: 10px; margin-top: 10px; }
+.atendimento-parada p { margin: 7px 0; }
