@@ -268,6 +268,23 @@ uv run playwright install chromium
 
 O download do navegador é separado e não é necessário para executar o
 coletor ou seus testes.
+
+## Prévia publicável com dados sintéticos
+
+Para revisar a versão mobile sem copiar o dataset privado:
+
+```powershell
+uv run --locked python preparar_publicacao.py
+uv run --locked python -m http.server 8000 --directory publicacao/dist --bind 127.0.0.1
+```
+
+O pacote usa somente o fixture fictício versionado em
+[`publicacao/dados.demo.json`](publicacao/dados.demo.json). Ele não lê
+`web/dados.json`, não acessa `saida/`, não modifica o repositório `site` e não
+faz deploy. Consulte a [arquitetura](docs/ARQUITETURA.md), o
+[plano do projeto](docs/PLANO_PROJETO.md) e o
+[relatório de estabilização](docs/RELATORIO_ESTABILIZACAO.md).
+
 ## Consulta de paradas próximas
 
 O MVP agora monta, no navegador, um índice local das paradas presentes no dataset validado. Para testar:
