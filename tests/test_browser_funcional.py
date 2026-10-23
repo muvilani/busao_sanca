@@ -38,10 +38,15 @@ class BrowserFuncionalTests(unittest.TestCase):
     @unittest.skipUnless(localizar_navegador(), "Edge/Chrome/Chromium não disponível")
     def test_fluxos_mobile_no_navegador_real(self):
         navegador = localizar_navegador()
+        cenarios = {
+            "android_vertical": (412, 915, "vertical"),
+            "iphone_vertical": (390, 844, "vertical"),
+            "android_horizontal": (915, 412, "horizontal"),
+            "iphone_horizontal": (844, 390, "horizontal"),
+        }
         with tempfile.TemporaryDirectory() as temporario:
             base = Path(temporario)
             dist = base / "dist"
-            perfil = base / "perfil"
             preparar_publicacao.preparar(dist)
             shutil.copyfile(RAIZ / "tests" / "browser_harness.js", dist / "browser_harness.js")
             indice = dist / "index.html"
@@ -59,15 +64,62 @@ class BrowserFuncionalTests(unittest.TestCase):
             thread = threading.Thread(target=servidor.serve_forever)
             thread.start()
             try:
+                for nome, (largura, altura, modo) in cenarios.items():
+                    with self.subTest(cenario=nome):
+                        perfil = base / f"perfil-{nome}"
+                        resultado = subprocess.run(
+                            [
+                                navegador,
+                                "--headless=new",
+                                "--disable-gpu",
+                                "--no-first-run",
+                                f"--user-data-dir={perfil}",
+                                "--dump-dom",
+                                "--virtual-time-budget=10000",
+                                f"--window-size={largura},{altura}",
+                                f"http://127.0.0.1:{servidor.server_port}?modo={modo}",
+                            ],
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            timeout=30,
+                            check=False,
+                        )
+                        self.assertEqual(resultado.returncode, 0, resultado.stderr[-2000:])
+                        self.assertIn('id="browser-test-results"', resultado.stdout)
+                        self.assertIn('data-status="ok"', resultado.stdout)
+                        self.assertIn('data-falhas=""', resultado.stdout)
+                        self.assertIn('data-erros=""', resultado.stdout)
+            finally:
+                servidor.shutdown()
+                servidor.server_close()
+                thread.join()
+
+    @unittest.skipUnless(localizar_navegador(), "Edge/Chrome/Chromium não disponível")
+    def test_estado_de_erro_sem_dataset(self):
+        navegador = localizar_navegador()
+        with tempfile.TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            dist = base / "dist"
+            preparar_publicacao.preparar(dist)
+            (dist / "dados.json").unlink()
+            servidor = http.server.ThreadingHTTPServer(
+                ("127.0.0.1", 0),
+                functools.partial(HandlerSilencioso, directory=str(dist)),
+            )
+            thread = threading.Thread(target=servidor.serve_forever)
+            thread.start()
+            try:
                 resultado = subprocess.run(
                     [
                         navegador,
                         "--headless=new",
                         "--disable-gpu",
                         "--no-first-run",
-                        f"--user-data-dir={perfil}",
+                        f"--user-data-dir={base / 'perfil-erro'}",
                         "--dump-dom",
-                        "--virtual-time-budget=10000",
+                        "--virtual-time-budget=5000",
                         "--window-size=390,844",
                         f"http://127.0.0.1:{servidor.server_port}",
                     ],
@@ -82,12 +134,8 @@ class BrowserFuncionalTests(unittest.TestCase):
                 servidor.shutdown()
                 servidor.server_close()
                 thread.join()
-
             self.assertEqual(resultado.returncode, 0, resultado.stderr[-2000:])
-            self.assertIn('id="browser-test-results"', resultado.stdout)
-            self.assertIn('data-status="ok"', resultado.stdout)
-            self.assertIn('data-falhas=""', resultado.stdout)
-            self.assertIn('data-erros=""', resultado.stdout)
+            self.assertIn("Dados locais indisponíveis", resultado.stdout)
 
 
 if __name__ == "__main__":
