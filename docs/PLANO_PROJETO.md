@@ -46,18 +46,19 @@ histórico `8477734` não pode ser reconstruído.
 
 ## Fase 4 — MVP mobile local
 
-**Estado:** estabilizado para prévia.
+**Estado:** estabilizado em automação; validação física pendente.
 
 - busca por linha, nome e destino;
 - horários na origem e itinerários;
 - busca manual e proximidade de paradas;
 - geolocalização opcional;
 - consulta por parada com filtro de vigência;
-- planejador textual experimental;
+- planejador textual experimental com rotas diretas e uma conexão por
+  `id_parada` compartilhado;
 - avisos de cobertura, calendário e ausência de previsão em tempo real.
 
-**Critério para avançar:** suíte completa verde, teste headless mobile verde e
-nenhuma regressão com o dataset privado local.
+**Critério para avançar:** suíte completa verde, matriz headless mobile verde,
+nenhuma regressão com o dataset privado local e registro do teste físico.
 
 ## Fase 5 — Prévia publicável sintética
 
@@ -69,8 +70,9 @@ nenhuma regressão com o dataset privado local.
 - teste funcional automatizado do pacote montado.
 
 **Critério para avançar:** revisão manual do pacote e teste em pelo menos um
-Android e um iPhone físicos. Não é necessário usar localização real: a revisão
-deve confirmar também os fluxos de permissão negada e indisponível.
+Android e um iPhone físicos, seguindo `docs/TESTE_MOBILE.md`. Não é necessário
+usar localização real: a revisão deve confirmar também os fluxos de permissão
+negada e indisponível.
 
 ## Fase 6 — Autorização e prévia privada
 
@@ -104,7 +106,8 @@ deve confirmar também os fluxos de permissão negada e indisponível.
 
 ## Próxima ação recomendada
 
-Executar a prévia sintética em dispositivos físicos e registrar evidências de
-layout, acessibilidade e permissões. Em paralelo, solicitar confirmação formal
-da licença de redistribuição e do calendário. Nenhum dataset real deve avançar
-para hospedagem antes dessas duas frentes.
+Executar a prévia sintética em Android e iPhone físicos, registrar evidências
+de layout, acessibilidade e permissões e corrigir eventuais bloqueios. Em
+paralelo, solicitar confirmação formal da licença de redistribuição e do
+calendário. Nenhum dataset real deve avançar para hospedagem antes dessas duas
+frentes.

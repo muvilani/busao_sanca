@@ -4,8 +4,8 @@ Projeto em desenvolvimento para facilitar a consulta de linhas, horários e
 itinerários dos ônibus de São Carlos (SP).
 
 > **Estado atual:** além do catálogo, o projeto possui parsers de horários e
-> itinerários e um MVP web mobile-first. O MVP é uma prévia privada, não é um
-> planejador de viagens e ainda não é uma PWA instalável.
+> itinerários e um MVP web mobile-first. O planejador é experimental e
+> conservador; a prévia ainda não é uma PWA instalável nem está publicada.
 
 ## MVP privado: horários e itinerários
 
@@ -209,8 +209,9 @@ os avisos de que os horários são de saída na origem, não previsão de chegad
 O MVP também permite informar origem e destino por texto. A busca ignora
 acentos e diferenças de maiúsculas, oferece sugestões de paradas do dataset e
 respeita o sentido e a ordem das paradas. Primeiro são exibidas rotas diretas;
-conexões só aparecem quando existe uma parada compartilhada de forma exata
-entre duas linhas e ambas as pernas têm ordem válida.
+conexões só aparecem quando existe o mesmo `id_parada` em duas variantes e
+ambas as pernas têm ordem válida. Nome igual com identificadores diferentes
+não é tratado como ponto de conexão.
 
 Para testar localmente:
 
@@ -284,6 +285,8 @@ O pacote usa somente o fixture fictício versionado em
 faz deploy. Consulte a [arquitetura](docs/ARQUITETURA.md), o
 [plano do projeto](docs/PLANO_PROJETO.md) e o
 [relatório de estabilização](docs/RELATORIO_ESTABILIZACAO.md).
+O roteiro para aparelhos físicos está em
+[`docs/TESTE_MOBILE.md`](docs/TESTE_MOBILE.md).
 
 ## Consulta de paradas próximas
 

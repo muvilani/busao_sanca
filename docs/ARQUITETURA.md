@@ -70,7 +70,7 @@ fora do Git.
 `web/` é uma aplicação estática, sem framework ou etapa obrigatória de build:
 
 - `app.js`: carregamento do dataset, busca de linhas e renderização geral;
-- `planejador.js`: busca textual e rotas diretas ou com uma conexão;
+- `planejador.js`: busca textual e rotas diretas ou com uma conexão estrutural;
 - `paradas.js`: índice de paradas, busca manual, proximidade e consulta por
   parada;
 - `styles.css` e `planner.css`: layout mobile-first;
@@ -80,6 +80,15 @@ A geolocalização é opcional, processada no navegador e usada apenas para
 ordenar distâncias em linha reta. A consulta por parada filtra pela vigência
 declarada da data escolhida, mas não afirma operação naquele dia. Os horários
 continuam sendo partidas na origem da viagem, não previsão de passagem.
+
+O planejador usa `id_parada` como identidade confiável. Cada alternativa
+preserva linha, sentido, variante, serviço e ordem do itinerário. Uma viagem
+direta exige embarque anterior ao desembarque na mesma variante. Uma conexão
+exige duas variantes válidas e exatamente o mesmo `id_parada` no ponto de
+troca; igualdade de nome não basta. Os resultados são deduplicados e ordenados
+por número de conexões, quantidade de paradas e identificadores estáveis. A
+conexão continua marcada como candidata não verificada porque o dataset não
+confirma tempo de transferência, espera, tarifa ou integração.
 
 ## Fronteira de publicação
 
@@ -98,12 +107,15 @@ atualizá-lo.
 
 ## Testes
 
-A suíte `unittest` cobre parsers, acesso HTTP simulado, pipelines, consolidação,
+A suíte cobre parsers, acesso HTTP simulado, pipelines, consolidação,
 planejamento, paradas e política do pacote. O teste funcional de navegador
-monta a prévia sintética em diretório temporário, abre Edge/Chrome/Chromium
-headless e exercita os fluxos principais em largura inferior ao breakpoint de
-640 px. Sem navegador compatível, somente esse teste é marcado como ignorado.
+monta a prévia sintética em diretório temporário e abre Edge/Chrome/Chromium
+headless em quatro viewports: Android e iPhone, retrato e paisagem. Também
+verifica estados vazios e de erro, foco por teclado, overflow, rotas direta e
+com conexão, troca de data e geolocalização simulada. Sem navegador compatível,
+somente os testes dependentes dele são marcados como ignorados.
 
 Automação headless não substitui validação em Android/iOS físico, permissões
 reais do sistema, leitores de tela, condições de rede lenta ou instalação como
-PWA.
+PWA. O roteiro seguro de validação está em
+[`TESTE_MOBILE.md`](TESTE_MOBILE.md).

@@ -48,7 +48,9 @@ Foi criado um fluxo no repositório principal:
 - nenhuma leitura de `web/dados.json`, `saida/` ou do repositório `site` ocorre
   durante a montagem.
 
-O pacote está pronto para revisão local, não para publicação. A hospedagem
+O fixture sintético passou a conter duas linhas fictícias conectadas pelo mesmo
+identificador de parada, exclusivamente para exercitar o planejador. O pacote
+está pronto para revisão local, não para publicação. A hospedagem
 continua inalterada e desatualizada em relação ao repositório principal.
 
 ## Testes automatizados
@@ -62,7 +64,9 @@ Além da suíte unitária existente, foram adicionadas verificações para:
 - busca manual e seleção de parada;
 - atualização da consulta após mudança de data;
 - geolocalização simulada permitida, negada e indisponível;
-- layout abaixo do breakpoint mobile de 640 px;
+- Android e iPhone simulados, em retrato e paisagem;
+- rota direta, conexão, inversão, limpeza e origem igual ao destino;
+- estados vazios, dataset ausente e foco programático por teclado;
 - ausência de overflow horizontal;
 - ausência de erros e rejeições JavaScript não tratadas.
 
@@ -80,6 +84,7 @@ real é coletada.
 - abertura de mapas e comportamento de voltar ao aplicativo.
 
 Esses testes não devem ser descritos como concluídos pela automação headless.
+O roteiro executável e os cuidados de acesso estão em `docs/TESTE_MOBILE.md`.
 
 ## Política de dados
 
