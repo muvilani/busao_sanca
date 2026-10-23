@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "status": "sucesso",
+  "demonstracao": {
+    "sintetico": true,
+    "aviso": "Dados inteiramente fictícios para validar a interface. Não usar para viagens."
+  },
+  "consolidado_em": "2026-01-01T00:00:00+00:00",
+  "projeto": {
+    "id": "demonstracao-sintetica",
+    "cidade": "Cidade Fictícia"
+  },
+  "fonte": {
+    "aviso": "Fixture sintético sem origem operacional."
+  },
+  "cobertura": {
+    "completa": true,
+    "linhas_solicitadas": 1,
+    "linhas_concluidas": 1
+  },
+  "classificacao": {
+    "validadas": ["D1"],
+    "com_falhas": [],
+    "nao_coletadas": []
+  },
+  "limitacoes": [
+    "Todos os nomes, identificadores, horários e itinerários deste arquivo são fictícios.",
+    "Partidas representam a origem da viagem, não passagem em paradas intermediárias.",
+    "O calendário semanal não é interpretado."
+  ],
+  "linhas": [
+    {
+      "catalogo": {
+        "codigo": "D1",
+        "nome": "Linha Demonstração (fictícia)",
+        "id_linha": 990001
+      },
+      "horarios": {
+        "schema_version": 1,
+        "linha": {
+          "codigo": "D1",
+          "nome": "Linha Demonstração (fictícia)",
+          "id_linha": 990001
+        },
+        "variantes": [
+          {
+            "id_viagem": 990101,
+            "id_direcao": 1,
+            "sequencia_origem": 1,
+            "destino": "Bairro Exemplo"
+          }
+        ],
+        "direcoes": [
+          {
+            "id_direcao": 1,
+            "descricao": "Terminal Fictício → Bairro Exemplo",
+            "servicos": [
+              {
+                "id_servico": 990201,
+                "descricao": "Serviço sintético",
+                "vigencia_inicio": "2026-01-01",
+                "vigencia_fim": "2030-12-31",
+                "partidas": [
+                  {"id_viagem": 990101, "saida": "08:00"},
+                  {"id_viagem": 990101, "saida": "17:30"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "itinerarios": [
+        {
+          "schema_version": 1,
+          "id_viagem": 990101,
+          "nome_viagem": "Viagem de demonstração",
+          "paradas": [
+            {
+              "ordem": 1,
+              "id_parada": 991001,
+              "nome": "Terminal Fictício",
+              "latitude": 0.0,
+              "longitude": 0.0
+            },
+            {
+              "ordem": 2,
+              "id_parada": 991002,
+              "nome": "Praça Exemplo",
+              "latitude": 0.001,
+              "longitude": 0.001
+            },
+            {
+              "ordem": 3,
+              "id_parada": 991003,
+              "nome": "Bairro Exemplo",
+              "latitude": 0.002,
+              "longitude": 0.002
+            }
+          ],
+          "geometria": {
+            "validacao": {
+              "extremidades_compativeis": true
+            }
+          }
+        }
+      ],
+      "cobertura": {
+        "variantes": 1,
+        "trip_ids_unicos": 1,
+        "itinerarios_validados": 1,
+        "completa_no_escopo_solicitado": true,
+        "geometrias_com_extremidades_divergentes": []
+      },
+      "erros": []
+    }
+  ]
+}

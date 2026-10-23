@@ -32,14 +32,18 @@ class WebMvpTests(unittest.TestCase):
     def test_planejador_experimental_expoe_limitacoes(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         js = (WEB / "app.js").read_text(encoding="utf-8")
+        planner = (WEB / "planejador.js").read_text(encoding="utf-8")
         self.assertIn('id="planejador"', html)
         self.assertIn("candidata não verificada", js)
-        self.assertIn("Não há horário confirmado de passagem", js)
-        self.assertIn("linha reta", js)
+        self.assertIn("horario_passagem_confirmado: false", planner)
+        self.assertIn("linha reta", html)
+        self.assertNotIn("CONSULTA_REAL", js)
+        self.assertNotIn("StepWise", js)
 
     def test_interface_aceita_dataset_parcial_e_sinaliza_falhas(self):
         js = (WEB / "app.js").read_text(encoding="utf-8")
         self.assertIn("Dados locais parciais; linhas indisponíveis não são exibidas", js)
+        self.assertIn("Demonstração sintética — não representa linhas ou horários reais", js)
         self.assertIn("dataset.classificacao?.com_falhas", js)
         self.assertIn("Array.isArray(dataset.linhas)", js)
 

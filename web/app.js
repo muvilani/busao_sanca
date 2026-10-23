@@ -8,12 +8,6 @@ const caso = document.querySelector("#caso");
 const planejador = document.querySelector("#planejador");
 let dataset = null;
 
-const CONSULTA_REAL = {
-  origem: {latitude: -22.0124426, longitude: -47.8931462},
-  destino: {latitude: -22.0410217, longitude: -47.8860183},
-  inicio: "17:00", fim: "18:00"
-};
-
 const seguro = (valor) => String(valor ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const normalizar = (texto) => String(texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -38,38 +32,6 @@ function renderizar() {
   });
   lista.innerHTML = linhas.map(renderizarLinha).join("") || '<p class="painel">Nenhuma linha encontrada neste conjunto local.</p>';
   renderizarPlanejador();
-}
-
-function distancia(a, b) {
-  const r = 6371000, rad = x => x * Math.PI / 180;
-  const dp = rad(b.latitude - a.latitude), dl = rad(b.longitude - a.longitude);
-  const h = Math.sin(dp/2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dl/2) ** 2;
-  return 2 * r * Math.asin(Math.min(1, Math.sqrt(h)));
-}
-
-function renderizarPlanejadorExperimental() {
-  const linha = dataset?.linhas.find(x => x.horarios.linha.codigo === "34");
-  if (!linha) { planejador.hidden = true; return; }
-  const variantes = new Map(linha.horarios.variantes.map(v => [v.id_viagem, v]));
-  const direcoes = new Map(linha.horarios.direcoes.map(d => [d.id_direcao, d]));
-  const candidatos = [];
-  for (const itinerario of linha.itinerarios) {
-    const variante = variantes.get(itinerario.id_viagem), direcao = direcoes.get(variante?.id_direcao);
-    if (!variante || !direcao) continue;
-    let melhor = null;
-    itinerario.paradas.slice(0, -1).forEach((embarque, indice) => itinerario.paradas.slice(indice + 1).forEach(desembarque => {
-      const de = distancia(CONSULTA_REAL.origem, embarque), dd = distancia(CONSULTA_REAL.destino, desembarque);
-      if (!melhor || de + dd < melhor.de + melhor.dd) melhor = {embarque, desembarque, de, dd};
-    }));
-    if (melhor.de > 800 || melhor.dd > 800) continue;
-    const partidas = partidasDaVariante(direcao, itinerario.id_viagem).filter(p =>
-      p.servico.descricao === "Dias úteis" && servicoNaVigencia(p.servico) && p.saida >= CONSULTA_REAL.inicio && p.saida <= CONSULTA_REAL.fim
-    );
-    candidatos.push({itinerario, variante, partidas, ...melhor});
-  }
-  candidatos.sort((a,b) => (b.partidas.length - a.partidas.length) || (a.de+a.dd-b.de-b.dd));
-  planejador.hidden = false;
-  planejador.innerHTML = `<h2>Experimento: StepWise → Rua Icaraí</h2><p><span class="selo">candidata não verificada</span></p><p>A linha 34 tem variantes em que o embarque aparece antes do desembarque. A posição exata da StepWise não foi obtida, portanto o ponto e a caminhada ainda precisam de conferência presencial.</p>${candidatos.slice(0,3).map((c,i) => `<article class="rota-exp"><h3>${i+1}. Linha 34 · ${seguro(c.variante.destino)}</h3><div class="passos"><b>A</b><div><strong>${seguro(c.embarque.nome)}</strong><br><span class="meta">${Math.round(c.de)} m em linha reta desde o centroide do CEP · parada ${c.embarque.ordem}</span></div><b>B</b><div><strong>${seguro(c.desembarque.nome)}</strong><br><span class="meta">${Math.round(c.dd)} m em linha reta até o centroide da Rua Icaraí · parada ${c.desembarque.ordem}</span></div></div><p><strong>Partidas no terminal:</strong> ${c.partidas.length ? c.partidas.map(p => seguro(p.saida)).join(" · ") : "nenhuma entre 17h e 18h no serviço rotulado “Dias úteis”"}</p><p class="aviso">Não há horário confirmado de passagem no embarque. Distâncias não são rotas reais a pé.${c.itinerario.geometria.validacao.extremidades_compativeis === false ? " A geometria desta variante é divergente." : ""}</p></article>`).join("")}<p class="atribuicao">Geocodificação pontual: Nominatim/OpenStreetMap. Dados © contribuidores do OpenStreetMap, ODbL. Precisão: origem = centroide de CEP (baixa); destino = centroide de via (aproximada).</p>`;
 }
 
 function renderizarLinha(item) {
@@ -140,10 +102,15 @@ async function iniciar() {
     const momento = instante && !Number.isNaN(instante.getTime()) ? instante.toLocaleString("pt-BR") : "data não informada";
     const cobertura = dataset.cobertura?.completa === true || dataset.cobertura?.completa_no_escopo_solicitado === true;
     const indisponiveis = dataset.classificacao?.com_falhas || [];
-    const aviso = cobertura ? "Dados validados no escopo selecionado" : "Dados locais parciais; linhas indisponíveis não são exibidas";
+    const sintetico = dataset.demonstracao?.sintetico === true;
+    const aviso = sintetico
+      ? "Demonstração sintética — não representa linhas ou horários reais"
+      : cobertura
+        ? "Dados validados no escopo selecionado"
+        : "Dados locais parciais; linhas indisponíveis não são exibidas";
     estado.innerHTML = `<strong>${aviso}</strong><br><span class="meta">Coleta: ${seguro(momento)} · ${dataset.linhas.length} linha(s). A operação municipal completa não foi confirmada.${indisponiveis.length ? ` Linhas com falha: ${seguro(indisponiveis.join(", "))}.` : ""}</span>`;
-    caso.hidden = false;
-    caso.innerHTML = '<h2>XV de Novembro → Vila Morumbi</h2><p>A análise encontrou uma ligação candidata pela linha 34, com embarque antes do desembarque. Ela permanece não verificada porque a coordenada exata da StepWise não foi obtida.</p>';
+    caso.hidden = true;
+    caso.innerHTML = "";
     if (window.BusaoStops) window.BusaoStops.init(dataset);
     renderizar();
   } catch (erro) {
