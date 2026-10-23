@@ -43,9 +43,19 @@ def _pontuacao_busca(consulta: str, nome: str) -> float:
     return SequenceMatcher(None, consulta, nome).ratio()
 
 
-def _registros_locais(dataset: dict) -> list[dict]:
-    registros = []
-    for linha in dataset.get("linhas", []):
+def _chave_parada(parada: dict, fallback: str) -> tuple[str, bool]:
+    identificador = parada.get("id_parada")
+    if type(identificador) is int and identificador > 0:
+        return f"id:{identificador}", True
+    return f"ocorrencia:{fallback}", False
+
+
+def _segmentos(dataset: dict) -> list[dict]:
+    segmentos = []
+    linhas = dataset.get("linhas", []) if isinstance(dataset, dict) else []
+    for linha in linhas if isinstance(linhas, list) else []:
+        if not isinstance(linha, dict):
+            continue
         catalogo = linha.get("catalogo", {})
         codigo = catalogo.get("codigo")
         if codigo == "54" or linha.get("cobertura", {}).get("completa_no_escopo_solicitado") is False:
@@ -56,23 +66,50 @@ def _registros_locais(dataset: dict) -> list[dict]:
         for itinerario in linha.get("itinerarios", []):
             variante = variantes.get(itinerario.get("id_viagem"))
             direcao = direcoes.get(variante.get("id_direcao")) if variante else None
-            if not variante or not direcao:
+            paradas = itinerario.get("paradas")
+            if not variante or not direcao or not isinstance(paradas, list) or len(paradas) < 2:
                 continue
-            for parada in itinerario.get("paradas", []):
-                nome = parada.get("nome")
+            ordens = [parada.get("ordem") for parada in paradas if isinstance(parada, dict)]
+            if len(ordens) != len(paradas) or any(type(ordem) is not int for ordem in ordens):
+                continue
+            if any(atual >= seguinte for atual, seguinte in zip(ordens, ordens[1:])):
+                continue
+            paradas_indexadas = []
+            for indice, parada in enumerate(paradas):
+                nome = parada.get("nome") if isinstance(parada, dict) else None
                 chave = normalizar_local(nome)
-                if chave:
-                    registros.append({
-                        "chave": chave,
-                        "nome": nome,
-                        "parada": parada,
-                        "linha": linha,
-                        "codigo": codigo,
-                        "nome_linha": catalogo.get("nome", ""),
-                        "itinerario": itinerario,
-                        "variante": variante,
-                        "direcao": direcao,
-                    })
+                if not chave:
+                    break
+                chave_parada, confiavel = _chave_parada(
+                    parada, f"{codigo}:{itinerario.get('id_viagem')}:{indice}"
+                )
+                paradas_indexadas.append({
+                    "chave": chave_parada,
+                    "chave_nome": chave,
+                    "confiavel": confiavel,
+                    "nome": nome,
+                    "parada": parada,
+                    "indice": indice,
+                })
+            if len(paradas_indexadas) != len(paradas):
+                continue
+            segmentos.append({
+                "linha": linha,
+                "codigo": str(codigo or ""),
+                "nome_linha": catalogo.get("nome", ""),
+                "itinerario": itinerario,
+                "variante": variante,
+                "direcao": direcao,
+                "paradas": paradas_indexadas,
+            })
+    return segmentos
+
+
+def _registros_locais(dataset: dict) -> list[dict]:
+    registros = []
+    for segmento in _segmentos(dataset):
+        for parada in segmento["paradas"]:
+            registros.append({**parada, **segmento})
     return registros
 
 
@@ -82,11 +119,22 @@ def sugerir_locais(dataset: dict, consulta: str, limite: int = 8) -> list[dict]:
     agrupados: dict[str, dict] = {}
     for registro in _registros_locais(dataset):
         chave = registro["chave"]
-        item = agrupados.setdefault(chave, {"nome": registro["nome"], "ocorrencias": 0})
+        identificador = registro["parada"].get("id_parada")
+        rotulo = f"{registro['nome']} · parada {identificador}" if registro["confiavel"] else registro["nome"]
+        item = agrupados.setdefault(chave, {
+            "chave": chave,
+            "nome": registro["nome"],
+            "rotulo": rotulo,
+            "id_parada": identificador,
+            "ocorrencias": 0,
+        })
         item["ocorrencias"] += 1
     resultados = []
     for chave, item in agrupados.items():
-        score = _pontuacao_busca(consulta_normalizada, chave) if consulta_normalizada else 0.1
+        score = max(
+            _pontuacao_busca(consulta_normalizada, normalizar_local(item["nome"])),
+            _pontuacao_busca(consulta_normalizada, normalizar_local(item["rotulo"])),
+        ) if consulta_normalizada else 0.1
         if score >= 0.52 or not consulta_normalizada:
             resultados.append({**item, "score": round(score, 3)})
     return sorted(resultados, key=lambda item: (-item["score"], -item["ocorrencias"], normalizar_local(item["nome"])))[:limite]
@@ -109,10 +157,79 @@ def _partidas_textuais(horarios: dict, trip_id: int, data_consulta: str | None) 
                 if partida.get("id_viagem") == trip_id:
                     resultados.append({
                         "saida_terminal": partida.get("saida"),
+                        "id_servico": servico.get("id_servico"),
                         "descricao_servico": servico.get("descricao"),
+                        "vigencia_inicio": servico.get("vigencia_inicio"),
+                        "vigencia_fim": servico.get("vigencia_fim"),
                         "horario_passagem_confirmado": False,
                     })
-    return sorted({(item["saida_terminal"], item["descricao_servico"]): item for item in resultados}.values(), key=lambda item: item["saida_terminal"] or "")
+    return sorted(
+        {
+            (item["saida_terminal"], item["id_servico"], item["descricao_servico"]): item
+            for item in resultados
+        }.values(),
+        key=lambda item: item["saida_terminal"] or "",
+    )
+
+
+def _resolver_chaves(dataset: dict, valor: str) -> tuple[set[str], list[dict]]:
+    sugestoes = sugerir_locais(dataset, valor, limite=20)
+    texto = str(valor or "").strip()
+    if not texto:
+        return set(), sugestoes
+
+    por_chave = [item for item in sugestoes if item["chave"] == texto]
+    if por_chave:
+        return {por_chave[0]["chave"]}, sugestoes
+
+    consulta = normalizar_local(texto)
+    por_rotulo = [item for item in sugestoes if normalizar_local(item["rotulo"]) == consulta]
+    if por_rotulo:
+        return {item["chave"] for item in por_rotulo}, sugestoes
+    por_nome = [item for item in sugestoes if normalizar_local(item["nome"]) == consulta]
+    if por_nome:
+        return {item["chave"] for item in por_nome}, sugestoes
+    if not sugestoes or sugestoes[0]["score"] < 0.52:
+        return set(), sugestoes
+    melhor = sugestoes[0]["score"]
+    return {item["chave"] for item in sugestoes if item["score"] >= melhor - 0.12}, sugestoes
+
+
+def _montar_perna(segmento: dict, inicio: int, fim: int, data_consulta: str | None) -> dict:
+    itinerario = segmento["itinerario"]
+    variante = segmento["variante"]
+    embarque = segmento["paradas"][inicio]
+    desembarque = segmento["paradas"][fim]
+    geometria_ok = itinerario.get("geometria", {}).get("validacao", {}).get(
+        "extremidades_compativeis", True
+    )
+    partidas = _partidas_textuais(
+        segmento["linha"].get("horarios", {}), itinerario.get("id_viagem"), data_consulta
+    )
+    servicos = {
+        (str(partida.get("id_servico")), str(partida.get("descricao_servico"))): {
+            "id_servico": partida.get("id_servico"),
+            "descricao": partida.get("descricao_servico"),
+        }
+        for partida in partidas
+    }
+    return {
+        "codigo_linha": segmento["codigo"],
+        "nome_linha": segmento["nome_linha"],
+        "sentido": segmento["direcao"].get("descricao"),
+        "destino_variante": variante.get("destino"),
+        "sequencia_variante": variante.get("sequencia"),
+        "embarque": embarque["parada"],
+        "desembarque": desembarque["parada"],
+        "chave_embarque": embarque["chave"],
+        "chave_desembarque": desembarque["chave"],
+        "id_viagem": itinerario.get("id_viagem"),
+        "geometria_confirmada": geometria_ok,
+        "paradas_intermediarias": max(0, fim - inicio - 1),
+        "paradas_percorridas": fim - inicio,
+        "servicos": [servicos[chave] for chave in sorted(servicos)],
+        "partidas": partidas,
+    }
 
 
 def origem_itinerario(itinerario: dict, horarios: dict) -> dict:
@@ -166,69 +283,152 @@ def relatorio_origens(dataset: dict) -> dict:
     }
 
 
-def planejar_texto(dataset: dict, origem: str, destino: str, *, data_consulta: str | None = None, limite_caminhada_m: float = 800) -> dict:
-    """Encontra trajetos diretos por nomes de paradas, respeitando a ordem."""
-    sugestoes_origem = sugerir_locais(dataset, origem)
-    sugestoes_destino = sugerir_locais(dataset, destino)
-    if not sugestoes_origem or not sugestoes_destino or sugestoes_origem[0]["score"] < 0.52 or sugestoes_destino[0]["score"] < 0.52:
-        return {"status": "sem_rota", "motivo": "Não encontrei paradas suficientemente semelhantes aos locais informados.", "sugestoes": {"origem": sugestoes_origem, "destino": sugestoes_destino}, "resultados": []}
-    origem_chaves = {item["nome"] for item in sugestoes_origem if item["score"] >= sugestoes_origem[0]["score"] - 0.12}
-    destino_chaves = {item["nome"] for item in sugestoes_destino if item["score"] >= sugestoes_destino[0]["score"] - 0.12}
-    resultados = []
-    for registro in _registros_locais(dataset):
-        if registro["nome"] not in origem_chaves:
-            continue
-        paradas = registro["itinerario"].get("paradas", [])
-        for destino_registro in _registros_locais({"linhas": [registro["linha"]]}):
-            if destino_registro["itinerario"].get("id_viagem") != registro["itinerario"].get("id_viagem") or destino_registro["nome"] not in destino_chaves:
-                continue
-            if registro["parada"].get("ordem", 0) >= destino_registro["parada"].get("ordem", 0):
-                continue
-            itinerario = registro["itinerario"]
-            geometria_ok = itinerario.get("geometria", {}).get("validacao", {}).get("extremidades_compativeis", True)
-            resultados.append({
-                "tipo": "direto",
-                "status": "candidata_nao_verificada" if not geometria_ok else "candidata",
-                "codigo_linha": registro["codigo"],
-                "nome_linha": registro["nome_linha"],
-                "sentido": registro["direcao"].get("descricao"),
-                "embarque": registro["parada"],
-                "desembarque": destino_registro["parada"],
-                "id_viagem": itinerario.get("id_viagem"),
-                "geometria_confirmada": geometria_ok,
-                "partidas": _partidas_textuais(registro["linha"]["horarios"], itinerario.get("id_viagem"), data_consulta),
-            })
-    if not resultados:
-        registros = _registros_locais(dataset)
-        for primeira in registros:
-            if primeira["nome"] not in origem_chaves:
-                continue
-            for transferencia in registros:
-                if transferencia["itinerario"].get("id_viagem") != primeira["itinerario"].get("id_viagem"):
+def planejar_texto(
+    dataset: dict,
+    origem: str,
+    destino: str,
+    *,
+    data_consulta: str | None = None,
+    limite_caminhada_m: float = 800,
+    limite_resultados: int = 8,
+) -> dict:
+    """Encontra viagens diretas e com uma conexão por paradas do dataset.
+
+    Uma conexão só é criada quando as duas variantes compartilham o mesmo
+    ``id_parada``. Coincidência de nomes, isoladamente, não prova integração.
+    ``limite_caminhada_m`` é mantido por compatibilidade; esta busca textual
+    não estima caminhada.
+    """
+    del limite_caminhada_m
+    origem_chaves, sugestoes_origem = _resolver_chaves(dataset, origem)
+    destino_chaves, sugestoes_destino = _resolver_chaves(dataset, destino)
+    resposta_base = {
+        "sugestoes": {"origem": sugestoes_origem, "destino": sugestoes_destino},
+        "resultados": [],
+    }
+    if not origem_chaves or not destino_chaves:
+        return {
+            **resposta_base,
+            "status": "sem_rota",
+            "motivo": "Não encontrei paradas suficientemente semelhantes aos locais informados.",
+        }
+    if origem_chaves & destino_chaves:
+        return {
+            **resposta_base,
+            "status": "origem_destino_iguais",
+            "motivo": "Origem e destino representam a mesma parada.",
+        }
+
+    segmentos = _segmentos(dataset)
+    diretos = []
+    for segmento in segmentos:
+        origens = [p["indice"] for p in segmento["paradas"] if p["chave"] in origem_chaves]
+        destinos = [p["indice"] for p in segmento["paradas"] if p["chave"] in destino_chaves]
+        for inicio in origens:
+            for fim in destinos:
+                if inicio >= fim:
                     continue
-                if transferencia["parada"].get("ordem", 0) <= primeira["parada"].get("ordem", 0):
+                perna = _montar_perna(segmento, inicio, fim, data_consulta)
+                diretos.append({
+                    "tipo": "direto",
+                    "status": "candidata" if perna["geometria_confirmada"] else "candidata_nao_verificada",
+                    "conexoes": 0,
+                    **perna,
+                })
+
+    conexoes = []
+    for primeiro in segmentos:
+        origens = [p["indice"] for p in primeiro["paradas"] if p["chave"] in origem_chaves]
+        for inicio in origens:
+            for indice_transferencia in range(inicio + 1, len(primeiro["paradas"])):
+                transferencia = primeiro["paradas"][indice_transferencia]
+                if (
+                    not transferencia["confiavel"]
+                    or transferencia["chave"] in origem_chaves
+                    or transferencia["chave"] in destino_chaves
+                ):
                     continue
-                if transferencia["chave"] in {normalizar_local(nome) for nome in destino_chaves}:
-                    continue
-                for segunda in registros:
-                    if segunda["codigo"] == primeira["codigo"] or segunda["chave"] != transferencia["chave"]:
+                for segundo in segmentos:
+                    if segundo["itinerario"].get("id_viagem") == primeiro["itinerario"].get("id_viagem"):
                         continue
-                    for destino_registro in registros:
-                        if destino_registro["itinerario"].get("id_viagem") != segunda["itinerario"].get("id_viagem") or destino_registro["nome"] not in destino_chaves:
-                            continue
-                        if segunda["parada"].get("ordem", 0) >= destino_registro["parada"].get("ordem", 0):
-                            continue
-                        resultados.append({
-                            "tipo": "conexao",
-                            "status": "candidata_nao_verificada",
-                            "transferencia": transferencia["parada"],
-                            "pernas": [
-                                {"codigo_linha": primeira["codigo"], "nome_linha": primeira["nome_linha"], "sentido": primeira["direcao"].get("descricao"), "embarque": primeira["parada"], "desembarque": transferencia["parada"], "id_viagem": primeira["itinerario"].get("id_viagem"), "partidas": _partidas_textuais(primeira["linha"]["horarios"], primeira["itinerario"].get("id_viagem"), data_consulta)},
-                                {"codigo_linha": segunda["codigo"], "nome_linha": segunda["nome_linha"], "sentido": segunda["direcao"].get("descricao"), "embarque": segunda["parada"], "desembarque": destino_registro["parada"], "id_viagem": segunda["itinerario"].get("id_viagem"), "partidas": _partidas_textuais(segunda["linha"]["horarios"], segunda["itinerario"].get("id_viagem"), data_consulta)},
-                            ],
-                        })
-    resultados = sorted({(r.get("tipo"), r["pernas"][0]["codigo_linha"] if r.get("tipo") == "conexao" else r["codigo_linha"], r["pernas"][0]["id_viagem"] if r.get("tipo") == "conexao" else r["id_viagem"]): r for r in resultados}.values(), key=lambda r: (r.get("tipo") != "direto", r.get("codigo_linha", r.get("pernas", [{}])[0].get("codigo_linha"))))
-    return {"status": "sucesso" if resultados else "sem_rota", "motivo": "Não encontrei uma rota direta validada para a ordem informada." if not resultados else "", "sugestoes": {"origem": sugestoes_origem, "destino": sugestoes_destino}, "resultados": resultados}
+                    embarques = [
+                        p["indice"] for p in segundo["paradas"]
+                        if p["confiavel"] and p["chave"] == transferencia["chave"]
+                    ]
+                    destinos = [p["indice"] for p in segundo["paradas"] if p["chave"] in destino_chaves]
+                    for embarque_segundo in embarques:
+                        for fim in destinos:
+                            if embarque_segundo >= fim:
+                                continue
+                            primeira_perna = _montar_perna(
+                                primeiro, inicio, indice_transferencia, data_consulta
+                            )
+                            segunda_perna = _montar_perna(
+                                segundo, embarque_segundo, fim, data_consulta
+                            )
+                            conexoes.append({
+                                "tipo": "conexao",
+                                "status": "candidata_nao_verificada",
+                                "conexoes": 1,
+                                "transferencia": transferencia["parada"],
+                                "paradas_ate_transferencia": primeira_perna["paradas_percorridas"],
+                                "paradas_percorridas": (
+                                    primeira_perna["paradas_percorridas"]
+                                    + segunda_perna["paradas_percorridas"]
+                                ),
+                                "pernas": [primeira_perna, segunda_perna],
+                                "aviso_conexao": (
+                                    "Conexão estrutural pelo mesmo identificador de parada; "
+                                    "tempo de transferência, tarifa e espera não foram confirmados."
+                                ),
+                            })
+
+    diretos_unicos = {
+        (item["id_viagem"], item["chave_embarque"], item["chave_desembarque"]): item
+        for item in diretos
+    }
+    conexoes_unicas = {
+        (
+            item["pernas"][0]["id_viagem"],
+            item["pernas"][1]["id_viagem"],
+            item["pernas"][0]["chave_embarque"],
+            item["transferencia"].get("id_parada"),
+            item["pernas"][1]["chave_desembarque"],
+        ): item
+        for item in conexoes
+    }
+    resultados = [*diretos_unicos.values(), *conexoes_unicas.values()]
+
+    def chave_ordenacao(item: dict) -> tuple:
+        primeira = item["pernas"][0] if item["tipo"] == "conexao" else item
+        segunda = item["pernas"][1] if item["tipo"] == "conexao" else {}
+        return (
+            item["conexoes"],
+            item["paradas_percorridas"],
+            primeira["paradas_percorridas"],
+            primeira["codigo_linha"],
+            str(primeira.get("sentido") or ""),
+            primeira.get("sequencia_variante") or 0,
+            str(segunda.get("codigo_linha") or ""),
+            segunda.get("sequencia_variante") or 0,
+        )
+
+    resultados = sorted(resultados, key=chave_ordenacao)[:max(0, limite_resultados)]
+    if not resultados:
+        return {
+            **resposta_base,
+            "status": "sem_rota",
+            "motivo": (
+                "Não encontrei uma sequência válida, direta ou com uma conexão confirmável, "
+                "entre as paradas informadas."
+            ),
+        }
+    return {
+        **resposta_base,
+        "status": "sucesso",
+        "motivo": "",
+        "resultados": resultados,
+    }
 
 
 def distancia_linha_reta(a: dict, b: dict) -> float:

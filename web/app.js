@@ -59,7 +59,24 @@ let rotaAtual = null;
 
 function preencherSugestoes(input, lista) {
   if (!window.BusaoPlanner || !dataset) return;
-  lista.innerHTML = window.BusaoPlanner.sugerir(dataset, input.value).map(item => `<option value="${seguro(item.nome)}"></option>`).join("");
+  lista.innerHTML = window.BusaoPlanner.sugerir(dataset, input.value)
+    .map(item => `<option value="${seguro(item.rotulo)}"></option>`).join("");
+}
+
+function partidasRota(perna) {
+  return perna.partidas.length
+    ? perna.partidas.map(p => `${seguro(p.saida_terminal)} (${seguro(p.descricao_servico)})`).join(" · ")
+    : "não disponíveis na vigência selecionada";
+}
+
+function pernaRota(perna, indice) {
+  const prefixo = indice === null ? "" : `<strong>Trecho ${indice + 1}</strong><br>`;
+  return `<p>${prefixo}<strong>Linha ${seguro(perna.codigo_linha)} · ${seguro(perna.nome_linha)}</strong><br>
+    Sentido: ${seguro(perna.sentido)}<br>
+    Embarque: ${seguro(perna.embarque.nome)}<br>
+    Desembarque: ${seguro(perna.desembarque.nome)}<br>
+    Percurso no itinerário: ${seguro(perna.paradas_percorridas)} parada(s)<br>
+    Partidas oficiais na origem: ${partidasRota(perna)}</p>`;
 }
 
 function renderizarResultadoRota() {
@@ -69,24 +86,65 @@ function renderizarResultadoRota() {
     alvo.innerHTML = `<p class="aviso">${seguro(rotaAtual.motivo)}</p>`;
     return;
   }
-  if (rotaAtual.resultados.some(item => item.tipo === "conexao")) {
-    alvo.innerHTML = `<h3>Alternativas com uma conexão</h3>${rotaAtual.resultados.map(item => `<article class="resultado-rota rota-conexao"><span class="selo">candidata não verificada</span><p>Troca segura somente na parada compartilhada <strong>${seguro(item.transferencia.nome)}</strong>.</p>${item.pernas.map((perna, indice) => `<p><strong>${indice + 1}. Linha ${seguro(perna.codigo_linha)} · ${seguro(perna.nome_linha)}</strong><br>Sentido: ${seguro(perna.sentido)}<br>Embarque: ${seguro(perna.embarque.nome)}<br>Desembarque: ${seguro(perna.desembarque.nome)}<br>Partidas oficiais na origem: ${perna.partidas.length ? perna.partidas.map(p => `${seguro(p.saida_terminal)} (${seguro(p.descricao_servico)})`).join(" · ") : "não disponíveis na vigência selecionada"}</p>`).join("")}<p class="aviso">Os horários são saídas nos terminais, não previsões de chegada ou passagem na parada.</p></article>`).join("")}`;
+  alvo.innerHTML = `<h3>Alternativas encontradas</h3>${rotaAtual.resultados.map(item => {
+    if (item.tipo === "conexao") return `<article class="resultado-rota rota-conexao">
+      <span class="selo">1 conexão · candidata não verificada</span>
+      <p>Troca estrutural na parada compartilhada <strong>${seguro(item.transferencia.nome)}</strong>.</p>
+      ${item.pernas.map((perna, indice) => pernaRota(perna, indice)).join("")}
+      <p class="aviso">${seguro(item.aviso_conexao)} Horários são partidas na origem das viagens, não previsões de passagem.</p>
+    </article>`;
+    return `<article class="resultado-rota">
+      <span class="selo">${item.status === "candidata_nao_verificada" ? "direta · geometria não verificada" : "rota direta"}</span>
+      ${pernaRota(item, null)}
+      <p class="aviso">Horários são partidas na origem da viagem, não previsões de chegada ou passagem na parada.</p>
+    </article>`;
+  }).join("")}`;
+}
+
+function atualizarSelecaoRota(input, alvo) {
+  if (!input.value.trim()) {
+    alvo.textContent = input.id === "origem-rota" ? "Nenhuma origem selecionada." : "Nenhum destino selecionado.";
     return;
   }
-  alvo.innerHTML = `<h3>Alternativas encontradas</h3>${rotaAtual.resultados.map(item => `<article class="resultado-rota ${item.tipo === "conexao" ? "rota-conexao" : ""}"><span class="selo">${item.status === "candidata_nao_verificada" ? "candidata não verificada" : "rota direta"}</span><h3>Linha ${seguro(item.codigo_linha)} · ${seguro(item.nome_linha)}</h3><p><strong>Sentido:</strong> ${seguro(item.sentido)}<br><strong>Embarque:</strong> ${seguro(item.embarque.nome)}<br><strong>Desembarque:</strong> ${seguro(item.desembarque.nome)}</p><p><strong>Partidas oficiais na origem:</strong> ${item.partidas.length ? item.partidas.map(p => `${seguro(p.saida_terminal)} (${seguro(p.descricao_servico)})`).join(" · ") : "não disponíveis na vigência selecionada"}</p><p class="aviso">Esses horários são saídas no terminal e não são previsão de chegada ao ponto.${item.status === "candidata_nao_verificada" ? " A geometria da viagem exige conferência adicional." : ""}</p></article>`).join("")}`;
+  const opcoes = window.BusaoPlanner.sugerir(dataset, input.value, 1);
+  alvo.textContent = opcoes.length ? `Seleção: ${opcoes[0].rotulo}` : "Nenhuma parada correspondente selecionada.";
 }
 
 function renderizarPlanejador() {
   if (!dataset || !window.BusaoPlanner) return;
   const origem = document.querySelector("#origem-rota"), destino = document.querySelector("#destino-rota");
   const buscar = document.querySelector("#buscar-rota"), sugestoesOrigem = document.querySelector("#sugestoes-origem"), sugestoesDestino = document.querySelector("#sugestoes-destino");
+  const inverter = document.querySelector("#inverter-rota"), limpar = document.querySelector("#limpar-rota");
+  const origemSelecionada = document.querySelector("#origem-selecionada"), destinoSelecionado = document.querySelector("#destino-selecionado");
   if (!origem || !destino || !buscar || buscar.dataset.pronto) return;
   buscar.dataset.pronto = "true";
-  origem.addEventListener("input", () => preencherSugestoes(origem, sugestoesOrigem));
-  destino.addEventListener("input", () => preencherSugestoes(destino, sugestoesDestino));
-  buscar.addEventListener("click", () => {
+  const executar = () => {
     rotaAtual = window.BusaoPlanner.planejar(dataset, origem.value, destino.value, data.value);
     renderizarResultadoRota();
+  };
+  origem.addEventListener("input", () => {
+    preencherSugestoes(origem, sugestoesOrigem);
+    atualizarSelecaoRota(origem, origemSelecionada);
+  });
+  destino.addEventListener("input", () => {
+    preencherSugestoes(destino, sugestoesDestino);
+    atualizarSelecaoRota(destino, destinoSelecionado);
+  });
+  buscar.addEventListener("click", executar);
+  inverter.addEventListener("click", () => {
+    [origem.value, destino.value] = [destino.value, origem.value];
+    atualizarSelecaoRota(origem, origemSelecionada);
+    atualizarSelecaoRota(destino, destinoSelecionado);
+    if (origem.value && destino.value) executar();
+  });
+  limpar.addEventListener("click", () => {
+    origem.value = "";
+    destino.value = "";
+    rotaAtual = null;
+    document.querySelector("#resultados-rota").innerHTML = "";
+    atualizarSelecaoRota(origem, origemSelecionada);
+    atualizarSelecaoRota(destino, destinoSelecionado);
+    origem.focus();
   });
 }
 
@@ -120,5 +178,12 @@ async function iniciar() {
 }
 
 busca.addEventListener("input", renderizar);
-data.addEventListener("change", renderizar);
+data.addEventListener("change", () => {
+  renderizar();
+  const origem = document.querySelector("#origem-rota"), destino = document.querySelector("#destino-rota");
+  if (dataset && rotaAtual && origem?.value && destino?.value) {
+    rotaAtual = window.BusaoPlanner.planejar(dataset, origem.value, destino.value, data.value);
+    renderizarResultadoRota();
+  }
+});
 iniciar();

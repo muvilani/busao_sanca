@@ -10,7 +10,8 @@ class PublicacaoTests(unittest.TestCase):
     def test_fixture_e_exclusivamente_sintetico(self):
         dados = preparar_publicacao.carregar_fixture()
         self.assertIs(dados["demonstracao"]["sintetico"], True)
-        self.assertEqual([linha["catalogo"]["codigo"] for linha in dados["linhas"]], ["D1"])
+        self.assertEqual([linha["catalogo"]["codigo"] for linha in dados["linhas"]], ["D1", "D2"])
+        self.assertTrue(all(linha["catalogo"]["codigo"].startswith("D") for linha in dados["linhas"]))
         self.assertIn("fict", json.dumps(dados, ensure_ascii=False).casefold())
         serializado = json.dumps(dados, ensure_ascii=False)
         self.assertNotIn("São Carlos", serializado)

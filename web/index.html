@@ -36,17 +36,24 @@
       <div id="consulta-parada" class="consulta-parada" aria-live="polite"></div>
     </section>
     <section id="planejador" class="painel planejador" aria-labelledby="titulo-planejador">
-      <h2 id="titulo-planejador">Planejar viagem</h2>
-      <p>Informe uma parada ou referência de origem e destino. As sugestões vêm somente das paradas validadas no dataset local.</p>
+      <h2 id="titulo-planejador">Como chegar</h2>
+      <p>Escolha paradas de origem e destino. As sugestões vêm somente dos itinerários validados no conjunto local.</p>
       <div class="rota-form">
         <label for="origem-rota">Origem</label>
         <input id="origem-rota" type="search" list="sugestoes-origem" placeholder="Ex.: São João" autocomplete="off">
         <datalist id="sugestoes-origem"></datalist>
+        <p id="origem-selecionada" class="selecao-rota" aria-live="polite">Nenhuma origem selecionada.</p>
         <label for="destino-rota">Destino</label>
         <input id="destino-rota" type="search" list="sugestoes-destino" placeholder="Ex.: Centro" autocomplete="off">
         <datalist id="sugestoes-destino"></datalist>
-        <button id="buscar-rota" type="button">Encontrar ônibus</button>
+        <p id="destino-selecionado" class="selecao-rota" aria-live="polite">Nenhum destino selecionado.</p>
+        <div class="acoes-rota">
+          <button id="inverter-rota" type="button" class="secundario" aria-label="Inverter origem e destino">Inverter</button>
+          <button id="limpar-rota" type="button" class="secundario">Limpar</button>
+          <button id="buscar-rota" type="button">Encontrar ônibus</button>
+        </div>
       </div>
+      <p class="nota">O planejador é experimental. Não estima caminhada, tempo de espera, tarifa ou chegada à parada; conexões são candidatas estruturais e exigem conferência.</p>
       <div id="resultados-rota" aria-live="polite"></div>
     </section>
     <section id="lista" aria-label="Linhas"></section>

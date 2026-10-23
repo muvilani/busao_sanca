@@ -7,8 +7,14 @@ import unittest
 from planejar_viagem import analisar_linha, distancia_linha_reta, melhor_par_ordenado, origem_itinerario, partidas_de_terminal, planejar_texto, relatorio_origens, sugerir_locais
 
 
-def parada(ordem, lat, lon, nome):
-    return {"ordem": ordem, "latitude": lat, "longitude": lon, "nome": nome, "id_parada": ordem}
+def parada(ordem, lat, lon, nome, id_parada=None):
+    return {
+        "ordem": ordem,
+        "latitude": lat,
+        "longitude": lon,
+        "nome": nome,
+        "id_parada": ordem if id_parada is None else id_parada,
+    }
 
 
 def linha_sintetica():
@@ -29,9 +35,39 @@ def dataset_textual():
     linha = linha_sintetica()
     linha["catalogo"] = {"codigo": "10", "nome": "Centro x Sul"}
     linha["cobertura"] = {"completa_no_escopo_solicitado": True}
-    linha["itinerarios"][0]["paradas"] = [parada(1, 0, 0, "São João"), parada(2, 0, .01, "Centro"), parada(3, 0, .02, "Vila Sul")]
-    linha["itinerarios"][1]["paradas"] = [parada(1, 0, .02, "Vila Sul"), parada(2, 0, .01, "Centro"), parada(3, 0, 0, "São João")]
+    linha["itinerarios"][0]["paradas"] = [parada(1, 0, 0, "São João", 101), parada(2, 0, .01, "Centro", 102), parada(3, 0, .02, "Vila Sul", 103)]
+    linha["itinerarios"][1]["paradas"] = [parada(1, 0, .02, "Vila Sul", 103), parada(2, 0, .01, "Centro", 102), parada(3, 0, 0, "São João", 101)]
     return {"linhas": [linha]}
+
+
+def adicionar_linha_conexao(dados, *, parada_compartilhada=103, codigo="11", repetida=False):
+    segunda = linha_sintetica()
+    segunda["catalogo"] = {"codigo": codigo, "nome": "Sul x Norte"}
+    segunda["cobertura"] = {"completa_no_escopo_solicitado": True}
+    paradas = [
+        parada(1, 0, .02, "Vila Sul", parada_compartilhada),
+        parada(2, 0, .03, "Norte", 104),
+    ]
+    segunda["itinerarios"] = [{
+        "id_viagem": 30,
+        "paradas": paradas,
+        "geometria": {"validacao": {"extremidades_compativeis": True}},
+    }]
+    if repetida:
+        segunda["itinerarios"].append({
+            "id_viagem": 31,
+            "paradas": [dict(item) for item in paradas],
+            "geometria": {"validacao": {"extremidades_compativeis": True}},
+        })
+    segunda["horarios"]["variantes"] = [
+        {"id_viagem": 30, "id_direcao": 0, "destino": "Norte", "sequencia": 1}
+    ]
+    if repetida:
+        segunda["horarios"]["variantes"].append(
+            {"id_viagem": 31, "id_direcao": 0, "destino": "Norte", "sequencia": 2}
+        )
+    dados["linhas"].append(segunda)
+    return segunda
 
 
 class PlanejamentoTests(unittest.TestCase):
@@ -44,6 +80,16 @@ class PlanejamentoTests(unittest.TestCase):
         self.assertEqual(resultado["status"], "sucesso")
         self.assertEqual(resultado["resultados"][0]["sentido"], "Ida")
         self.assertLess(resultado["resultados"][0]["embarque"]["ordem"], resultado["resultados"][0]["desembarque"]["ordem"])
+
+    def test_sentido_inverso_escolhe_variante_de_volta(self):
+        resultado = planejar_texto(dataset_textual(), "Vila Sul", "São João")
+        self.assertEqual(resultado["status"], "sucesso")
+        self.assertEqual(resultado["resultados"][0]["sentido"], "Volta")
+
+    def test_origem_e_destino_iguais_tem_estado_especifico(self):
+        resultado = planejar_texto(dataset_textual(), "Centro", "Centro")
+        self.assertEqual(resultado["status"], "origem_destino_iguais")
+        self.assertEqual(resultado["resultados"], [])
 
     def test_linha_54_incompleta_e_excluida(self):
         dados = dataset_textual()
@@ -59,16 +105,51 @@ class PlanejamentoTests(unittest.TestCase):
 
     def test_conexao_so_usa_parada_compartilhada_e_ordem_valida(self):
         dados = dataset_textual()
-        segunda = linha_sintetica()
-        segunda["catalogo"] = {"codigo": "11", "nome": "Sul x Norte"}
-        segunda["cobertura"] = {"completa_no_escopo_solicitado": True}
-        segunda["itinerarios"] = [{"id_viagem": 30, "paradas": [parada(1, 0, .02, "Vila Sul"), parada(2, 0, .03, "Norte")], "geometria": {"validacao": {"extremidades_compativeis": True}}}]
-        segunda["horarios"]["variantes"] = [{"id_viagem": 30, "id_direcao": 0, "destino": "Norte"}]
-        dados["linhas"].append(segunda)
+        adicionar_linha_conexao(dados)
         resultado = planejar_texto(dados, "São João", "Norte")
         self.assertEqual(resultado["status"], "sucesso")
         self.assertEqual(resultado["resultados"][0]["tipo"], "conexao")
         self.assertEqual(resultado["resultados"][0]["transferencia"]["nome"], "Vila Sul")
+        self.assertEqual(resultado["resultados"][0]["transferencia"]["id_parada"], 103)
+
+    def test_nome_igual_com_ids_diferentes_nao_cria_conexao(self):
+        dados = dataset_textual()
+        adicionar_linha_conexao(dados, parada_compartilhada=999)
+        resultado = planejar_texto(dados, "São João", "Norte")
+        self.assertEqual(resultado["status"], "sem_rota")
+
+    def test_conexao_impossivel_por_ordem_inversa(self):
+        dados = dataset_textual()
+        segunda = adicionar_linha_conexao(dados)
+        segunda["itinerarios"][0]["paradas"].reverse()
+        for indice, item in enumerate(segunda["itinerarios"][0]["paradas"], 1):
+            item["ordem"] = indice
+        resultado = planejar_texto(dados, "São João", "Norte")
+        self.assertEqual(resultado["status"], "sem_rota")
+
+    def test_itinerario_com_ordem_invalida_e_ignorado(self):
+        dados = dataset_textual()
+        dados["linhas"][0]["itinerarios"][0]["paradas"][1]["ordem"] = 1
+        resultado = planejar_texto(dados, "São João", "Vila Sul")
+        self.assertEqual(resultado["status"], "sem_rota")
+
+    def test_resultados_diretos_precedem_conexoes_e_menor_percurso(self):
+        dados = dataset_textual()
+        adicionar_linha_conexao(dados)
+        resultado = planejar_texto(dados, "São João", "Vila Sul")
+        self.assertEqual(resultado["resultados"][0]["tipo"], "direto")
+        self.assertEqual(resultado["resultados"][0]["paradas_percorridas"], 2)
+
+    def test_resultados_repetidos_sao_deduplicados(self):
+        dados = dataset_textual()
+        adicionar_linha_conexao(dados)
+        dados["linhas"].append(dados["linhas"][1])
+        resultado = planejar_texto(dados, "São João", "Norte")
+        self.assertEqual(len(resultado["resultados"]), 1)
+
+    def test_dataset_ausente_retorna_sem_rota(self):
+        resultado = planejar_texto({}, "Origem", "Destino")
+        self.assertEqual(resultado["status"], "sem_rota")
 
     def test_embarque_sempre_precede_desembarque(self):
         rota = linha_sintetica()["itinerarios"][0]

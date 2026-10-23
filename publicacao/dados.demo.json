@@ -15,11 +15,11 @@
   },
   "cobertura": {
     "completa": true,
-    "linhas_solicitadas": 1,
-    "linhas_concluidas": 1
+    "linhas_solicitadas": 2,
+    "linhas_concluidas": 2
   },
   "classificacao": {
-    "validadas": ["D1"],
+    "validadas": ["D1", "D2"],
     "com_falhas": [],
     "nao_coletadas": []
   },
@@ -95,6 +95,83 @@
               "nome": "Bairro Exemplo",
               "latitude": 0.002,
               "longitude": 0.002
+            }
+          ],
+          "geometria": {
+            "validacao": {
+              "extremidades_compativeis": true
+            }
+          }
+        }
+      ],
+      "cobertura": {
+        "variantes": 1,
+        "trip_ids_unicos": 1,
+        "itinerarios_validados": 1,
+        "completa_no_escopo_solicitado": true,
+        "geometrias_com_extremidades_divergentes": []
+      },
+      "erros": []
+    },
+    {
+      "catalogo": {
+        "codigo": "D2",
+        "nome": "Conexão Demonstração (fictícia)",
+        "id_linha": 990002
+      },
+      "horarios": {
+        "schema_version": 1,
+        "linha": {
+          "codigo": "D2",
+          "nome": "Conexão Demonstração (fictícia)",
+          "id_linha": 990002
+        },
+        "variantes": [
+          {
+            "id_viagem": 990102,
+            "id_direcao": 1,
+            "sequencia_origem": 1,
+            "destino": "Jardim Inventado"
+          }
+        ],
+        "direcoes": [
+          {
+            "id_direcao": 1,
+            "descricao": "Bairro Exemplo → Jardim Inventado",
+            "servicos": [
+              {
+                "id_servico": 990202,
+                "descricao": "Serviço sintético",
+                "vigencia_inicio": "2026-01-01",
+                "vigencia_fim": "2030-12-31",
+                "partidas": [
+                  {"id_viagem": 990102, "saida": "08:30"},
+                  {"id_viagem": 990102, "saida": "18:00"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "itinerarios": [
+        {
+          "schema_version": 1,
+          "id_viagem": 990102,
+          "nome_viagem": "Conexão de demonstração",
+          "paradas": [
+            {
+              "ordem": 1,
+              "id_parada": 991003,
+              "nome": "Bairro Exemplo",
+              "latitude": 0.002,
+              "longitude": 0.002
+            },
+            {
+              "ordem": 2,
+              "id_parada": 991004,
+              "nome": "Jardim Inventado",
+              "latitude": 0.003,
+              "longitude": 0.003
             }
           ],
           "geometria": {
