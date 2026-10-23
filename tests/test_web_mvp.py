@@ -82,6 +82,41 @@ class WebMvpTests(unittest.TestCase):
         self.assertIn("saídas na origem da viagem", js)
         self.assertIn("não horários de passagem nesta parada", js)
 
+    def test_consulta_de_parada_filtra_vigencia_e_mantem_incerteza(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn("function partidasNaVigencia", js)
+        self.assertIn("vigencia_inicio <= dataSelecionada", js)
+        self.assertIn("dataSelecionada <= partida.vigencia_fim", js)
+        self.assertIn("A data considera somente a vigência declarada", js)
+        self.assertIn("A operação nesse dia não pode ser confirmada", js)
+        self.assertIn("nenhuma partida com vigência compatível", js)
+
+    def test_selecao_de_parada_e_atualizada_quando_data_muda(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn("let paradaSelecionada = null", js)
+        self.assertIn("paradaSelecionada = parada", js)
+        self.assertIn('data?.addEventListener("change"', js)
+        self.assertIn("selecionar(paradaSelecionada)", js)
+
+    def test_geolocalizacao_permitida_ordena_e_exibe_resultados(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn("navigator.geolocation.getCurrentPosition", js)
+        self.assertIn("pos.coords.latitude", js)
+        self.assertIn("pos.coords.longitude", js)
+        self.assertIn("Localização usada somente nesta tela", js)
+        self.assertIn("enableHighAccuracy: false", js)
+
+    def test_geolocalizacao_negada_oferece_busca_manual(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn('1: "Permissão negada."', js)
+        self.assertIn("Use a busca manual", js)
+
+    def test_geolocalizacao_indisponivel_oferece_busca_manual(self):
+        js = (WEB / "paradas.js").read_text(encoding="utf-8")
+        self.assertIn("if (!navigator.geolocation)", js)
+        self.assertIn("Este navegador não oferece geolocalização", js)
+        self.assertIn('2: "Localização indisponível."', js)
+
 
 if __name__ == "__main__":
     unittest.main()

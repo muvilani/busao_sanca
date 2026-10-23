@@ -5,7 +5,8 @@ Este módulo não acessa a API. Ele trabalha apenas sobre um dataset já validad
 
 from __future__ import annotations
 
-from collections import defaultdict
+import unicodedata
+from datetime import date
 from math import asin, cos, isfinite, radians, sin, sqrt
 from typing import Any
 
@@ -134,6 +135,55 @@ def atendimentos_da_parada(indice: dict[str, Any], chave: str) -> list[dict[str,
         if parada.get("chave") == chave:
             return list(parada.get("atendimentos", []))
     return []
+
+
+def normalizar_busca(valor: Any) -> str:
+    """Normaliza caixa, acentos e separadores sem alterar o dado original."""
+    decomposto = unicodedata.normalize("NFKD", str(valor or ""))
+    sem_acentos = "".join(caractere for caractere in decomposto if not unicodedata.combining(caractere))
+    return " ".join("".join(caractere if caractere.isalnum() else " " for caractere in sem_acentos.casefold()).split())
+
+
+def buscar_paradas(indice: dict[str, Any], termo: Any, limite: int = 10) -> list[dict[str, Any]]:
+    """Busca por nome ou ID com a mesma normalização usada na interface."""
+    if limite < 1:
+        return []
+    consulta = normalizar_busca(termo)
+    return [
+        parada
+        for parada in indice.get("paradas", [])
+        if not consulta or consulta in normalizar_busca(f"{parada.get('nome', '')} {parada.get('id_parada', '')}")
+    ][:limite]
+
+
+def _data_iso_valida(valor: Any) -> bool:
+    if not isinstance(valor, str) or len(valor) != 10:
+        return False
+    try:
+        return date.fromisoformat(valor).isoformat() == valor
+    except ValueError:
+        return False
+
+
+def partidas_na_vigencia(atendimento: dict[str, Any], data_selecionada: Any) -> dict[str, Any]:
+    """Filtra somente pela vigência conhecida, sem inferir calendário semanal."""
+    if not _data_iso_valida(data_selecionada):
+        return {"partidas": [], "data_valida": False, "vigencia_desconhecida": False}
+    compativeis = []
+    vigencia_desconhecida = False
+    for partida in atendimento.get("partidas", []):
+        inicio = partida.get("vigencia_inicio")
+        fim = partida.get("vigencia_fim")
+        if not _data_iso_valida(inicio) or not _data_iso_valida(fim):
+            vigencia_desconhecida = True
+            continue
+        if inicio <= data_selecionada <= fim:
+            compativeis.append(partida)
+    return {
+        "partidas": compativeis,
+        "data_valida": True,
+        "vigencia_desconhecida": vigencia_desconhecida,
+    }
 
 
 def resumo_indice(indice: dict[str, Any]) -> dict[str, int]:

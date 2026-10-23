@@ -280,6 +280,13 @@ Abra `http://localhost:8000`, autorize a localização quando desejar e use **En
 
 Ao selecionar uma parada, a tela mostra as linhas, sentidos, variantes, posição no itinerário e partidas oficiais associadas à viagem. Essas partidas continuam identificadas como saídas na origem da viagem; não são horários de passagem na parada selecionada.
 
+A data escolhida também é aplicada à consulta da parada. São exibidas somente
+partidas de serviços cuja vigência declarada inclui a data selecionada. Essa
+compatibilidade não confirma operação no dia: a interface mantém um aviso
+explícito porque a ordem do calendário semanal e a semântica das exceções da
+fonte ainda não foram estabelecidas. Serviços sem vigência válida são omitidos
+e sinalizados, sem inferência ou preenchimento de dados.
+
 Para auditar o índice sem abrir o navegador:
 
 ```powershell
